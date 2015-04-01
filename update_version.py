@@ -12,7 +12,7 @@ from setuptools import Command
 import re
 import logging
 
-LOGGER = logging.getLogger('pysiss')
+LOGGER = logging.getLogger('pymaxion')
 
 VERSION_PY_TEMPLATE = """\
 # This file is originally generated from Git information by running 'setup.py
@@ -26,7 +26,7 @@ def update_version():
     # Query git for the current description
     if not os.path.isdir(".git"):
         LOGGER.warn("This does not appear to be a Git repository, leaving "
-                    "pysiss/_version.py alone.")
+                    "pymaxion/_version.py alone.")
         return
     try:
         p = subprocess.Popen(["git", "describe", "--always"],
@@ -35,14 +35,14 @@ def update_version():
         if p.returncode != 0:
             raise EnvironmentError
         else:
-            ver = stdout.strip().split('-')
+            ver = stdout.decode("utf-8", "ignore").strip().split('-')
             if len(ver) > 1:
                 ver = ver[0] + '.dev' + ver[1]
             else:
                 ver = ver[0]
     except EnvironmentError:
         LOGGER.warn(
-            "Unable to run git, leaving pysiss/_version.py alone")
+            "Unable to run git, leaving pymaxion/_version.py alone")
         return
 
     # Write to file
@@ -50,7 +50,7 @@ def update_version():
     if current_ver != ver:
         LOGGER.info("Version {0} out of date, updating to {1}".format(
             current_ver, ver))
-        with open('pysiss/_version.py', 'wb') as fhandle:
+        with open('pymaxion/_version.py', 'w') as fhandle:
             fhandle.write(VERSION_PY_TEMPLATE.format(ver))
 
 
@@ -58,12 +58,12 @@ def get_version():
     """ Get the currently set version
     """
     try:
-        with open("pysiss/_version.py") as fhandle:
+        with open("pymaxion/_version.py") as fhandle:
             for line in (f for f in fhandle if not f.startswith('#')):
                 return re.match("__version__ = '([^']+)'", line).group(1)
     except EnvironmentError:
         LOGGER.error(
-            "Can't find pysiss/_version.py - what's the version, doc?")
+            "Can't find pymaxion/_version.py - what's the version, doc?")
         return 'unknown'
 
 
