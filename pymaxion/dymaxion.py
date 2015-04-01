@@ -49,11 +49,11 @@ class DymaxionProjection(object):
     # Vertices defining each face, each row gives the three vertices of the
     # face
     faces = numpy.array([
-            [ 0, 2, 1], [ 0, 3, 2], [ 0, 4, 3], [ 0, 5, 4], [ 0, 1, 5],
-            [ 1, 2, 7], [ 2, 8, 7], [ 2, 3, 8], [ 3, 9, 8], [ 3, 4, 9],
-            [ 4, 10, 9], [ 4, 5, 10], [ 5, 6, 10], [ 1, 6, 5], [ 1, 7, 6],
-            [ 7, 8, 11], [ 8, 9, 11], [ 9, 10, 11], [10, 6, 11], [ 7, 11, 6]
-        ], dtype=numpy.int)
+        [ 0,  1,  2], [ 0,  2,  3], [ 0,  3,  4], [ 0,  4,  5], [ 0,  1,  5],
+        [ 1,  2,  7], [ 7,  2,  8], [ 8,  2,  3], [ 9,  8,  3], [ 4,  9,  3],
+        [ 4, 10,  9], [ 4,  5, 10], [10,  5,  6], [ 6,  5,  1], [ 7,  6,  1],
+        [11,  8,  7], [11,  8,  9], [11, 10,  9], [11, 10,  6], [11,  7,  6]],
+        dtype=numpy.int)
 
     # Here's the list of rotations and scalings to move a face into
     # position on a 2D plane. Note that faces 8 and 15 have bits
@@ -68,7 +68,7 @@ class DymaxionProjection(object):
         6:  { 'rotation': 300, 'translation': (1,   5 / (2 * SQRT3)) },
         7:  { 'rotation': 0,   'translation': (1.5, 2 / SQRT3)       },
         8:  None,
-        9: { 'rotation': 60,  'translation': (2.5, 1 / SQRT3)       },
+        9:  { 'rotation': 60,  'translation': (2.5, 1 / SQRT3)       },
         10: { 'rotation': 60,  'translation': (3.5, 1 / SQRT3)       },
         11: { 'rotation': 120, 'translation': (3.5, 2 / SQRT3)       },
         12: { 'rotation': 60,  'translation': (4,   5 / (2 * SQRT3)) },
@@ -77,7 +77,7 @@ class DymaxionProjection(object):
         15: None,
         16: { 'rotation': 0,   'translation': (1,   1 / (2 * SQRT3)) },
         17: { 'rotation': 120, 'translation': (4,   1 / (2 * SQRT3)) },
-        18: { 'rotation': 120, 'translation': (4.5, 2 / (2 * SQRT3)) },
+        18: { 'rotation': 120, 'translation': (4.5, 2 / (SQRT3))     },
         19: { 'rotation': 300, 'translation': (5,   5 / (2 * SQRT3)) },
     }
 
@@ -226,20 +226,38 @@ class DymaxionProjection(object):
         axes.set_aspect("equal")
         axes.set_axis_off()
 
+    def plot_unfolded(self, axes=None):
+        """ Plots the unfolded polygon
+        """
+        # Set up & plot initial shape
+        sqrt3 = numpy.sqrt(3)
+        shape = shapely.geometry.Polygon([[ 0,    1/SQRT3     ],
+                                          [ 1/2, -1/(2*SQRT3) ],
+                                          [-1/2, -1/(2*SQRT3) ]])
+        axes = axes or plt.gca()
+        axes.add_patch(descartes.PolygonPatch(
+                shape, facecolor='white', edgecolor='black', alpha=0.7))
+        axes.plot(*shape.centroid.xy, color='red', marker='o')
 
-def test():
-    proj = DymaxionProjection()
-    proj.plot_polygon()
+        # Generate translated polygons for map
+        points = numpy.vstack(shape.boundary.xy)
+        cmap = plt.get_cmap('coolwarm')
+        for idx, transform in self.transformations.items():
+            # Get conditional transform
+            if not transform:
+                transform = self.conditional_transformations[idx][True]
 
-    plt.figure()
-    npoints = 10000
-    latitudes = numpy.random.uniform(0, 180, size=npoints)
-    longitudes = numpy.random.uniform(-180, 180, size=npoints)
-    plt.plot(longitudes, latitudes, '.')
-    plt.figure()
-    transformed = proj(latitudes=latitudes, longitudes=longitudes)
-    plt.plot(*transformed, marker='.')
-    plt.show()
+            # Plot results
+            color = cmap(idx / len(self.transformations))
+            poly = shapely.geometry.Polygon(
+                rotate(points, transform['rotation']).transpose()
+                + transform['translation'])
+            axes.add_patch(descartes.PolygonPatch(
+                poly, facecolor=color, edgecolor='black', alpha=0.7))
+            axes.text(poly.centroid.x, poly.centroid.y, s=idx)
 
-if __name__ == '__main__':
-    test()
+        # Fix up axes
+        axes.set_xlim(-1, 6)
+        axes.set_ylim(-1, 3)
+        axes.set_aspect('equal')
+        axes.set_axis_off()

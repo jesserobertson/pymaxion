@@ -39,18 +39,13 @@
 	"build_systems":
 	[
 		{
-			"name": "Production build",
-			"cmd": ["python", "setup.py", "develop"],
+			"name": "Run Test Suite",
+			"cmd": ["python", "setup.py", "test"],
 			"working_dir": "$project_path"
 		},
 		{
 			"name": "Install",
 			"cmd": ["python", "setup.py", "develop"],
-			"working_dir": "$project_path"
-		},
-		{
-			"name": "Run test suite",
-			"cmd": ["bash", "test_suite.sh"],
 			"working_dir": "$project_path"
 		}
 	]
