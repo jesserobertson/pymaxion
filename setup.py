@@ -54,6 +54,9 @@ setup(
 
     # Contents
     packages=find_packages(exclude=['test*']),
+    package_data={
+        'pymaxion.resources': ['*']
+    },
     test_suite='tests',
     cmdclass={
         'update_version': Version,

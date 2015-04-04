@@ -92,11 +92,15 @@ def rotate(points, angle_x, angle_y=None, angle_z=None):
             raise ValueError('You have to specify three rotations for 3D data')
         else:
             angles = numpy.radians([angle_z, angle_y, angle_x])
-            return numpy.dot(points.T, rotation_matrix(angles).T).T
+            return numpy.dot(rotation_matrix(angles), points)
 
     elif points.shape[0] == 2:
         angle = numpy.radians([angle_x])
-        return numpy.dot(points.T, rotation_matrix(angle).T).T
+        return numpy.dot(rotation_matrix(angle), points)
+
+    else:
+        print(points.shape)
+        raise ValueError("We're not supposed to be here")
 
 
 def test():

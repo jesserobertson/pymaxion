@@ -25,6 +25,14 @@ class TestDymaxion(unittest.TestCase):
         proj.plot_unfolded()
         fig.savefig('tests/poly_unfolded.png')
 
+    def test_plotting_grid(self):
+        """ Check we can plot a dymaxion grid
+        """
+        fig = plt.figure()
+        proj = DymaxionProjection()
+        proj.plot_grid()
+        fig.savefig('tests/grid.png')
+
     def test_transform(self):
         """ Test that transformation works
         """
