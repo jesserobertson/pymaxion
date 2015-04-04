@@ -25,9 +25,9 @@ def spherical_to_cartesian(points):
             a 3 by N array containing (x, y, z) cartesian points
     """
     return vstack([
-        sin(points[1]) * cos(points[0]),
-        sin(points[1]) * sin(points[0]),
-        cos(points[1])])
+        sin(points[0]) * cos(points[1]),
+        cos(points[0]) * cos(points[1]),
+        sin(points[1])])
 
 def cartesian_to_spherical(points):
     """ Convert cartesian to spherical polar coordinates.
@@ -42,9 +42,9 @@ def cartesian_to_spherical(points):
                 axis)
     """
     return vstack([
-        arctan2(points[1], points[0]), 
+        arctan2(points[0], points[1]), 
         arctan2(points[2], sqrt(points[0] ** 2 + points[1] ** 2))])
-
+    
 def longlat_to_spherical(points):
     """ Convert longitude and latitude into spherical polar
         coordinates (theta, phi) with radius unity.
