@@ -1,0 +1,7 @@
+examples/ne_*
+tests/*.png
+*.pyc
+__pycache__
+.ipynb_checkpoints
+.DS_Store
+examples/*.ipynb*/*
