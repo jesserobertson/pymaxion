@@ -17,19 +17,22 @@ import scipy.spatial
 
 from .conversions import spherical_to_cartesian, \
     cartesian_to_spherical, longlat_to_spherical, gnomonic_projection
-from .rotations import rotate
+from .rotations import rotate, rotation_matrix
 
 # CONSTANTS
 SQRT3 = numpy.sqrt(3)
 SQRT5 = numpy.sqrt(5)
 
-def geodesic_linspace(a, b, npoints=50):
+def geodesic_linspace(a, b, npoints=50, inclusive=True):
     """ Construct a 'linspace' along a geodesic for a spherical earth between two points
     """
     # Make sure that everything is set up right
     long_a, lat_a = numpy.radians(a)
     long_b, lat_b = numpy.radians(b)
-    fraction = numpy.linspace(0, 1, npoints)
+    if inclusive:
+        fraction = numpy.linspace(0, 1, npoints)
+    else:
+        fraction = numpy.linspace(0, 1, npoints+1)[:-1]
     
     # Parameterize arc between the points
     d = numpy.arccos(numpy.sin(lat_a) * numpy.sin(lat_b) + numpy.cos(lat_a) * numpy.cos(lat_b) * numpy.cos(long_a - long_b))
@@ -257,7 +260,7 @@ class DymaxionProjection(object):
             the net from a single starting orientation
         """
         # Return the cached version if we have it
-        if hasattr(self, _rotation_matrices):
+        if hasattr(self, '_rotation_matrices'):
             return self._rotation_matrices
 
         # Otherwise, calculate the rotation matrices using the face data
@@ -270,7 +273,7 @@ class DymaxionProjection(object):
             centre = self.face_centres[face_idx]
             theta, phi = cartesian_to_spherical(centre).ravel()
             rotation = numpy.dot(
-                rotation_matrix([-pi/2, 0, -phi]), 
+                rotation_matrix([-numpy.pi/2, 0, -phi]), 
                 rotation_matrix([theta, 0, 0]))
 
             # We also need to rotate the faces so they are all aligned the same way
@@ -366,7 +369,7 @@ class DymaxionProjection(object):
                            (vertices[1], vertices[2]), 
                            (vertices[2], vertices[0])]
             edges = numpy.hstack([
-                numpy.vstack(geodesic_linspace(v0, v1))
+                numpy.vstack(geodesic_linspace(v0, v1, inclusive=False))
                 for v0, v1 in vertex_list]).transpose()
             self._latlong_faces.append(shapely.geometry.Polygon(edges))
         return self._latlong_faces
