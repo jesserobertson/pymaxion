@@ -16,39 +16,14 @@ import matplotlib.pyplot as plt
 import scipy.spatial
 
 from .conversions import spherical_to_cartesian, \
-    cartesian_to_spherical, longlat_to_spherical, gnomonic_projection
+    cartesian_to_spherical, longlat_to_spherical
+from .projections import gnomonic_projection
 from .rotations import rotate, rotation_matrix
+from .utilities import geodesic_linspace
 
 # CONSTANTS
 SQRT3 = numpy.sqrt(3)
 SQRT5 = numpy.sqrt(5)
-
-def geodesic_linspace(a, b, npoints=50, inclusive=True):
-    """ Construct a 'linspace' along a geodesic for a spherical earth between two points
-    """
-    # Make sure that everything is set up right
-    long_a, lat_a = numpy.radians(a)
-    long_b, lat_b = numpy.radians(b)
-    if inclusive:
-        fraction = numpy.linspace(0, 1, npoints)
-    else:
-        fraction = numpy.linspace(0, 1, npoints+1)[:-1]
-    
-    # Parameterize arc between the points
-    d = numpy.arccos(numpy.sin(lat_a) * numpy.sin(lat_b) + numpy.cos(lat_a) * numpy.cos(lat_b) * numpy.cos(long_a - long_b))
-    A = numpy.sin((1 - fraction) * d) / numpy.sin(d)
-    B = numpy.sin(fraction * d) / numpy.sin(d)
-
-    # Calculate cartesian points
-    points = \
-        numpy.vstack([A * numpy.cos(lat_a) * numpy.cos(long_a) 
-                        + B * numpy.cos(lat_b) * numpy.cos(long_b), 
-                      A * numpy.cos(lat_a) * numpy.sin(long_a) 
-                        + B * numpy.cos(lat_b) * numpy.sin(long_b), 
-                      A * numpy.sin(lat_a) + B * numpy.sin(lat_b)])
-
-    # Convert back to latitude and longitude and return
-    return numpy.degrees(cartesian_to_spherical(points))
 
 ## DYMAXION PROJECTION CLASS
 class DymaxionProjection(object):
@@ -138,99 +113,49 @@ class DymaxionProjection(object):
     def __call__(self, longitudes, latitudes):
         """ Converts the given latitudes and longitudes to Dymaxion points
         """
-        # Convert the coordinates into cartesian coordinates
-        theta, phi = longlat_to_spherical(longitudes, latitudes)
-        x, y, z = spherical_to_cartesian(theta, phi)
+        # Loop through points
+        dymax_xs, dymax_ys = [], []
+        for point in zip(longitudes, latitudes):
+            # Convert the coordinates into cartesian coordinates, determine
+            # which face the points are in & rotate the given point
+            # onto the template spherical face
+            theta, phi = longlat_to_spherical(*point)
+            x, y, z = spherical_to_cartesian(theta, phi)
+            face_idx = self._which_face(x, y, z)
+            x, y, z = numpy.dot(self.face_rotation_matrices[face_idx],
+                                numpy.vstack([x, y, z]))
+            rlong, rlat = cartesian_to_spherical(x, y, z)
 
-        # Determine which face the points are in
-        faces = self._which_face(x, y, z)
+            # Project points through gnomonic projection, then rotate back into
+            # postition on the Fuller plane
+            x_tmpl, y_tmpl = gnomonic_projection(90, 0)(rlong, rlat)
+            dymax_xs.append(x_tmpl[0])
+            dymax_ys.append(y_tmpl[0])
+        return numpy.asarray(dymax_xs), numpy.asarray(dymax_ys)
 
-        # Plot this result
-        reds = [plt.get_cmap('Reds')(3 * face / len(self.faces)) 
-                for face in range(len(self.faces))]
-        blues = [plt.get_cmap('Blues')(3 * face / len(self.faces)) 
-                for face in range(len(self.faces))]
-        greens = [plt.get_cmap('Greens')(3 * face / len(self.faces)) 
-                for face in range(len(self.faces))]
-        colors = []
-        for rgb in zip(reds, blues, greens):
-            colors.extend(rgb)
-        plt.figure()
-        axes = plt.gca()
-        for face in self.transformations.keys():
-            axes.plot(longitudes[faces == face],
-                      latitudes[faces == face],
-                      marker='.', color=colors[face],
-                      linewidth=0)
-
-        # Convert points to dymaxion locations
-        plt.figure()
-        axes = plt.gca()
-        dymax_points = numpy.empty((2, len(points)))
-        for face in range(len(self.faces)):
-            mask = (faces == face)
-            result = self._dymax(face, points[:, mask])
-            axes.plot(result[:, 0], result[:, 1], 
-                      color=colors[face], linewidth=0, marker='.')
-        axes.set_xlim(0, 6)
-        axes.set_ylim(0, 4)
-        plt.show()
-        return dymax_points
-
-    def _dymax(self, face, points):
-        """ Construct projected location given a face, a set of cartesian
-            points in that face, and subregions for those points.
-        """
-        # In order to rotate the given point into the template spherical
-        # face, we need the spherical polar coordinates of the center
-        # of the face and one of the face vertices.
-        h0 = face_vertex = self.vertices[self.faces[face][0]]
-        face_centre = self.face_centres[face].transpose()
-
-        # Project the point onto the template face using gnomonic projection
-        proj_points = project(cartesian_to_spherical(face_centre), 
-                              cartesian_to_spherical(points))
-        print(proj_points.shape, points.shape)
-
-        # Rotate and scale points back onto 2D plane
-        trans_info = self.transformations[face]
-        if trans_info:
-            proj_points = (rotate(proj_points, trans_info['rotation']).transpose() 
-                           + trans_info['translation'])
-        else:
-            proj_points = numpy.zeros_like(proj_points.transpose())
-            # # We're doing something funky here, get out which transform should be used
-            # # for which point
-            # flags = self.conditional_transformations[face]['condition'](self, points, [face])
-
-            # # Loop through flags, transform relevant points
-            # flag_unique = [k for k in self.conditional_transformations[face].keys() 
-            #                if k != 'condition']
-            # for flag in flag_unique:
-            #     trans_info = self.conditional_transformations[face][flag]
-            #     proj_points = (rotate(proj_points, trans_info['rotation'])
-            #                    + trans_info['translation'])
-        return proj_points
-
-    def _which_face(self, points):
+    def _which_face(self, x, y, z):
         """ Determine which face center is closest to the given point
 
             Parameters:
-                points - a 2 by N array containing the spherical coordinates of
+                x, y, z - arrays containing the cartesian coordinates of
                     the points
         """
         # Determine nearest face centre using the vertex kd tree
-        c_points = spherical_to_cartesian(points)
-        _, faces = self.vertex_kd_tree.query(c_points.transpose())
-        return faces
+        points = numpy.vstack([x, y, z]).transpose()
+        _, faces = self.vertex_kd_tree.query(points)
+        if len(faces) == 1:
+            return faces[0]
+        else:
+            return faces
 
-    def _which_subregions(self, points, faces):
+    def _which_subregions(self, face_idx, x, y, z):
         """ Determine which subregion of a face these points fall into
         """
+        return 1
         # Determine the distance to the face vertices
-        dist = numpy.sqrt([
-            ((points[:, i] - self.vertices[self.faces[t]]) ** 2).sum(axis=-1)
-            for i, t in enumerate(faces)]).transpose()
+        points = numpy.vstack([x, y, z]).transpose()
+        vertices = self.vertices[self.faces[face_idx]]
+        dist = numpy.sqrt(sum((points - vertices) ** 2))
 
         # We also need to know about subregions since some of the faces
         # are cut up into smaller sections
@@ -245,7 +170,7 @@ class DymaxionProjection(object):
 
         # Figure out which subregion we're in based on distance to face
         # vertices
-        subregions = numpy.zeros(len(faces), dtype=int)
+        subregions = numpy.zeros(len(x), dtype=int)
         for label, order in label_and_order.items():
             subregions[mask(order)] = label
         return subregions
@@ -255,7 +180,7 @@ class DymaxionProjection(object):
         """ Constructs matrices to rotate all the faces and the data
             into a standard position (vertically oriented, with the centre point
             on the x-axis).
-            
+
             This means we can define the later translation and rotation to form
             the net from a single starting orientation
         """
@@ -270,19 +195,19 @@ class DymaxionProjection(object):
             # We first need to rotate all the face centers so that they all overlap
             # We'll use two rotation matrices to define this because it's easier
             # than trying to calculate the relevant Euler angles
-            centre = self.face_centres[face_idx]
-            theta, phi = cartesian_to_spherical(centre).ravel()
+            x, y, z = self.face_centres[face_idx]
+            theta, phi = cartesian_to_spherical(x, y, z)
             rotation = numpy.dot(
-                rotation_matrix([-numpy.pi/2, 0, -phi]), 
+                rotation_matrix([-numpy.pi/2, 0, -phi]),
                 rotation_matrix([theta, 0, 0]))
 
             # We also need to rotate the faces so they are all aligned the same way
-            # So we rotate a single vertex to sit directly above the face centre 
-            vertex = numpy.dot(rotation, 
+            # So we rotate a single vertex to sit directly above the face centre
+            vertex = numpy.dot(rotation,
                                self.vertices[self.faces[face_idx][0]])
             angle = numpy.arctan2(vertex[1], vertex[2])
             self._rotation_matrices.append(
-                numpy.dot(rotation_matrix([0, 0, angle]), 
+                numpy.dot(rotation_matrix([0, 0, angle]),
                           rotation))
 
         return self._rotation_matrices
@@ -363,10 +288,10 @@ class DymaxionProjection(object):
         # Construct polygons for faces by using geodesic arcs between vertices
         self._latlong_faces = []
         for idx, vidxs in enumerate(self.faces):
-            vertices = [numpy.degrees(cartesian_to_spherical(v)) 
+            vertices = [numpy.degrees(cartesian_to_spherical(v))
                         for v in self.vertices[vidxs]]
-            vertex_list = [(vertices[0], vertices[1]), 
-                           (vertices[1], vertices[2]), 
+            vertex_list = [(vertices[0], vertices[1]),
+                           (vertices[1], vertices[2]),
                            (vertices[2], vertices[0])]
             edges = numpy.hstack([
                 numpy.vstack(geodesic_linspace(v0, v1, inclusive=False))
@@ -407,10 +332,17 @@ class DymaxionProjection(object):
         format_dict.update(kwargs)
         for poly in self.fuller_faces:
             axes.add_patch(descartes.PolygonPatch(poly, **format_dict))
-    
+
         # Fix up axes
         axes.set_xlim(-1, 6)
         axes.set_ylim(-1, 3)
         axes.set_aspect('equal')
         axes.set_axis_off()
 
+
+PROJ = DymaxionProjection()
+def dymaxion_transform(latitudes, longitudes):
+    """ Transform the given latitudes and longitudes into x, y points in
+        the Fuller (dymaxion) plane
+    """
+    return PROJ(latitudes, longitudes)
