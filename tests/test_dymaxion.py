@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import unittest
-
-from pymaxion import DymaxionProjection
-
 import numpy
 import matplotlib.pyplot as plt
+import shapely, shapely.ops
+
+from pymaxion import DymaxionProjection, dymaxion_transform
+
 
 class TestDymaxion(unittest.TestCase):
 
@@ -36,19 +37,20 @@ class TestDymaxion(unittest.TestCase):
     def test_transform(self):
         """ Test that transformation works
         """
-        proj = DymaxionProjection()
-
         # Untransformed points
         plt.figure()
-        npoints = 10000
-        latitudes = numpy.random.uniform(0, 180, size=npoints)
-        longitudes = numpy.random.uniform(-180, 180, size=npoints)
+        npoints = 1000
+        points = numpy.vstack([
+            numpy.random.uniform(0, 180, size=npoints),
+            numpy.random.uniform(-180, 180, size=npoints)]).transpose()
+        line = shapely.geometry.LineString(points)
         axes = plt.subplot(2, 1, 1)
-        axes.plot(longitudes, latitudes, '.')
+        axes.plot(*line.xy, marker='.')
         axes.set_aspect('equal')
 
         # Transformed points
-        transformed = proj(latitudes=latitudes, longitudes=longitudes)
+        transformed = shapely.ops.transform(dymaxion_transform,
+                                            line)
         axes = plt.subplot(2, 1, 2)
-        plt.plot(*transformed, marker='.')
+        plt.plot(*transformed.xy, marker='.')
         plt.savefig('tests/transformed.png')

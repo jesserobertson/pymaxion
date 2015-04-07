@@ -10,6 +10,8 @@
 import numpy
 import scipy.sparse
 
+from .conversions import longlat_to_spherical
+
 def rotation_matrix(angles_list=None, angles_array=None):
     """ Returns a rotation matrix in n dimensions
 
@@ -78,44 +80,23 @@ def rotation_matrix(angles_list=None, angles_array=None):
     return numpy.asarray(combined.todense())
 
 
-def rotate(points, angle_x, angle_y=None, angle_z=None):
-    """ Rotate points through some angle about the given axes
+def rotate_translate(rotation, translation):
+    """ Returns a function to rotate points around the origin
+        and them translate them with the given vector
 
-        Parameters:
-            points - 2 or 3 by N array of points to rotate
-            angle_x, angle_y, angle_z - rotation angle about x/y/z axis in
-                degrees. y and z rotations are optional, should only be
-                specified for three-dimensional points.
+        We use this for transformign the
     """
-    if points.shape[0] == 3:
-        if any(a is None for a in (angle_y, angle_z)):
-            raise ValueError('You have to specify three rotations for 3D data')
-        else:
-            angles = numpy.radians([angle_z, angle_y, angle_x])
-            return numpy.dot(rotation_matrix(angles), points)
-
-    elif points.shape[0] == 2:
-        angle = numpy.radians([angle_x])
-        return numpy.dot(rotation_matrix(angle), points)
-
-    else:
-        print(points.shape)
-        raise ValueError("We're not supposed to be here")
+    rot = rotation_matrix(numpy.radians([-rotation]))
+    def _transform_fn(x, y):
+        return (x*rot[0, 0] + y*rot[0, 1] + translation[0],
+                x*rot[1, 0] + y*rot[1, 1] + translation[1])
+    return _transform_fn
 
 
-def test():
-    import matplotlib.pyplot as plt
-
-    points = numpy.array([[1, 0], [0, 0], [0, 1]]).transpose()
-    rotpoints = rotate(points, 45)
-    print(type(rotpoints))
-    axes = plt.gca()
-    axes.plot(points[0], points[1], color='red')
-    axes.plot(rotpoints[0], rotpoints[1], color='blue')
-    axes.set_xlim(-1.1, 1.1)
-    axes.set_ylim(-1.1, 1.1)
-    axes.set_aspect("equal")
-    plt.show()
-
-if __name__ == '__main__':
-    test()
+def rotate_to_position(longitude, latitude):
+    """ Rotate the given data to the given longitude and latitude
+    """
+    theta, phi = longlat_to_spherical(longitude, latitude)
+    rotation = numpy.dot(
+                rotation_matrix([-numpy.pi/2, 0, -phi]),
+                rotation_matrix([theta, 0, 0]))

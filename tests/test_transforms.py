@@ -40,10 +40,11 @@ class TestConversions(unittest.TestCase):
 
     def test_forwards_and_backwards(self):
     	# Get Americas as test shape
-        longitude, latitude = self.shapes[2].boundary.xy
+        shape = self.shapes[2]
 
         # Carry out conversions
-        theta, phi = longlat_to_spherical(longitude, latitude)
+        theta, phi = shapely.ops.transform(longlat_to_spherical,
+                                          shape).boundary.xy
         x, y, z = spherical_to_cartesian(theta, phi)
         theta_b, phi_b = cartesian_to_spherical(x, y, z)
 

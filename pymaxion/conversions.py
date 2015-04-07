@@ -11,7 +11,7 @@
 
 import numpy
 from numpy import sin, cos, degrees, radians, arcsin, arctan, arctan2, sqrt, pi, \
-    vstack, asarray
+    vstack, asarray, pi
 
 def spherical_to_cartesian(theta, phi):
     """ Convert speherical polar to cartesian coordinates
@@ -40,7 +40,7 @@ def cartesian_to_spherical(x, y, z):
     """
     return (arctan2(x, y), arctan2(z, sqrt(x ** 2 + y ** 2)))
 
-def longlat_to_spherical(longitudes, latitudes):
+def longlat_to_spherical(longitude, latitude):
     """ Convert longitude and latitude into spherical polar
         coordinates (theta, phi) with radius unity.
 
@@ -57,4 +57,37 @@ def longlat_to_spherical(longitudes, latitudes):
                  phi = rotation from north pole ~~ 'latitude')
     """
     # Convert longitude and latitude to theta and phi
-    return (radians(longitudes), radians(latitudes))
+    theta = radians(longitude)
+    try:
+        theta[theta < -pi] += 2 * pi
+        theta[theta > pi] -= 2 * pi
+    except TypeError:
+        theta = theta + 2 * pi if theta < -pi else theta
+        theta = theta - 2 * pi if theta > pi else theta
+    return (theta, radians(latitude))
+
+def spherical_to_longlat(theta, phi):
+    """ Convert longitude and latitude into spherical polar
+        coordinates (theta, phi) with radius unity.
+
+        Longitudes and latitudes are assumed to be long in [0, 360]
+        and lat in [-90, 90] degrees.
+
+        Parameters:
+            a 2 by N array of longitude/latitude points,
+                given in degrees N and degrees E
+
+        Returns:
+            a tuple containing (theta, phi) arrays for the points given
+                (theta = rotation about polar axis ~~ 'longitude',
+                 phi = rotation from north pole ~~ 'latitude')
+    """
+    # Convert longitude and latitude to theta and phi
+    longitude = degrees(theta)
+    try:
+        longitude[longitude < -180] += 360
+        longitude[longitude > 180] -= 360
+    except TypeError:
+        longitude = longitude + 360 if longitude < -180 else longitude
+        longitude = longitude - 360 if longitude > 180 else longitude
+    return (longitude, degrees(phi))

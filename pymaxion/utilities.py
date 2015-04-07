@@ -57,4 +57,5 @@ def geodesic_linspace(a, b, npoints=50, inclusive=True):
                       A * numpy.sin(lat_a) + B * numpy.sin(lat_b)])
 
     # Convert back to latitude and longitude and return
-    return numpy.degrees(cartesian_to_spherical(points))
+    return numpy.degrees(
+         cartesian_to_spherical(points[0], points[1], points[2]))

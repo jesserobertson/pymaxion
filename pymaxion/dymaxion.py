@@ -18,7 +18,7 @@ import scipy.spatial
 from .conversions import spherical_to_cartesian, \
     cartesian_to_spherical, longlat_to_spherical
 from .projections import gnomonic_projection
-from .rotations import rotate, rotation_matrix
+from .rotations import rotation_matrix, rotate_translate
 from .utilities import geodesic_linspace
 
 # CONSTANTS
@@ -74,14 +74,16 @@ class DymaxionProjection(object):
         5:  { 'rotation': 300, 'translation': (1.5, 4 * SQRT3 / 3)   },
         6:  { 'rotation': 300, 'translation': (1,   5 / (2 * SQRT3)) },
         7:  { 'rotation': 0,   'translation': (1.5, 2 / SQRT3)       },
-        8:  None,
+        # 8:  None,
+        8:  { 'rotation': 300, 'translation': (1.5, 1 / SQRT3) },
         9:  { 'rotation': 60,  'translation': (2.5, 1 / SQRT3)       },
         10: { 'rotation': 60,  'translation': (3.5, 1 / SQRT3)       },
         11: { 'rotation': 120, 'translation': (3.5, 2 / SQRT3)       },
         12: { 'rotation': 60,  'translation': (4,   5 / (2 * SQRT3)) },
         13: { 'rotation': 0,   'translation': (4,   7 / (2 * SQRT3)) },
         14: { 'rotation': 0,   'translation': (5,   7 / (2 * SQRT3)) },
-        15: None,
+        # 15: None,
+        15: { 'rotation': 60, 'translation': (0.5, 1 / SQRT3) },
         16: { 'rotation': 0,   'translation': (1,   1 / (2 * SQRT3)) },
         17: { 'rotation': 120, 'translation': (4,   1 / (2 * SQRT3)) },
         18: { 'rotation': 120, 'translation': (4.5, 2 / (SQRT3))     },
@@ -110,28 +112,24 @@ class DymaxionProjection(object):
         # nearest-neighbour lookup later
         self.vertex_kd_tree = scipy.spatial.cKDTree(self.face_centres)
 
-    def __call__(self, longitudes, latitudes):
+    def __call__(self, longitude, latitude):
         """ Converts the given latitudes and longitudes to Dymaxion points
         """
-        # Loop through points
-        dymax_xs, dymax_ys = [], []
-        for point in zip(longitudes, latitudes):
-            # Convert the coordinates into cartesian coordinates, determine
-            # which face the points are in & rotate the given point
-            # onto the template spherical face
-            theta, phi = longlat_to_spherical(*point)
-            x, y, z = spherical_to_cartesian(theta, phi)
-            face_idx = self._which_face(x, y, z)
-            x, y, z = numpy.dot(self.face_rotation_matrices[face_idx],
-                                numpy.vstack([x, y, z]))
-            rlong, rlat = cartesian_to_spherical(x, y, z)
+        # Convert the coordinates into cartesian coordinates, determine
+        # which face the points are in & rotate the given point
+        # onto the template spherical face
+        theta, phi = longlat_to_spherical(longitude, latitude)
+        x, y, z = spherical_to_cartesian(theta, phi)
+        face_idx = self._which_face(x, y, z)
+        x, y, z = numpy.dot(self.face_rotation_matrices[face_idx],
+                            numpy.vstack([x, y, z]))
+        rlong, rlat = cartesian_to_spherical(x, y, z)
 
-            # Project points through gnomonic projection, then rotate back into
-            # postition on the Fuller plane
-            x_tmpl, y_tmpl = gnomonic_projection(90, 0)(rlong, rlat)
-            dymax_xs.append(x_tmpl[0])
-            dymax_ys.append(y_tmpl[0])
-        return numpy.asarray(dymax_xs), numpy.asarray(dymax_ys)
+        # Project points through gnomonic projection, then rotate back into
+        # postition on the Fuller plane
+        x_tmpl, y_tmpl = gnomonic_projection(numpy.pi/2, 0)(rlong, rlat)
+        transf = self.transformations[face_idx]
+        return rotate_translate(**transf)(x_tmpl, y_tmpl)
 
     def _which_face(self, x, y, z):
         """ Determine which face center is closest to the given point
@@ -221,7 +219,8 @@ class DymaxionProjection(object):
         else:
             self._face_centres = numpy.empty((self.faces.shape))
             for idx, node in enumerate(self.faces):
-                center = numpy.sum(self.vertices[node], axis=0) / 3
+                vertices = self.vertices[node]
+                center = numpy.sum(vertices, axis=0) / 3
                 magnitude = numpy.sqrt(numpy.sum(center ** 2))
                 self._face_centres[idx] = center / magnitude
             return self._face_centres
@@ -260,20 +259,12 @@ class DymaxionProjection(object):
 
         # Generate translated polygons for map
         self._fuller_faces = []
-        points = numpy.vstack(self.template.boundary.xy)
-        for idx, trans_info in self.transformations.items():
-            # Get conditional transform
-            if not trans_info:
-                trans_info = self.conditional_transformations[idx]
-                first_key = list(trans_info.keys())[1]
-                trans_info = trans_info[first_key]
-            rotation = trans_info['rotation']
-            translation = trans_info['translation']
-
+        for idx, trans in self.transformations.items():
             # Plot results
             self._fuller_faces.append(
-                shapely.geometry.Polygon(
-                    rotate(points, rotation).transpose() + translation))
+                shapely.ops.transform(
+                    rotate_translate(**trans),
+                    self.template))
 
         return self._fuller_faces
 
@@ -288,7 +279,7 @@ class DymaxionProjection(object):
         # Construct polygons for faces by using geodesic arcs between vertices
         self._latlong_faces = []
         for idx, vidxs in enumerate(self.faces):
-            vertices = [numpy.degrees(cartesian_to_spherical(v))
+            vertices = [numpy.degrees(cartesian_to_spherical(*v))
                         for v in self.vertices[vidxs]]
             vertex_list = [(vertices[0], vertices[1]),
                            (vertices[1], vertices[2]),
