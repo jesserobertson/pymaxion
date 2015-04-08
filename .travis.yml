@@ -25,6 +25,9 @@ before_install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
+  # Start xfvb X display so that matplotlib doesn't choke
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
 
 install:
   - conda create -q -n test-pymaxion python=$TRAVIS_PYTHON_VERSION --file requirements.txt
