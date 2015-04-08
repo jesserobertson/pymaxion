@@ -68,10 +68,6 @@ def inverse_sterographic_projection(clong, clat, longlat=False):
         theta = theta_c + arctan2(x * sin(C),
                                   radius * cos(phi_c) * cos(C)
                                   - y * sin(phi_c) * sin(C))
-        if theta < - pi / 2 and clong > 0:
-            theta += 2 * pi
-        if theta > pi / 2 and clong < 0:
-            theta -= 2 * pi
         phi = arcsin(cos(C) * sin(phi_c)
                      + (y / radius) * (sin(C) * cos(phi_c)))
         if longlat:

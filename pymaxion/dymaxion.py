@@ -14,6 +14,7 @@ import shapely.geometry
 import descartes
 import matplotlib.pyplot as plt
 import scipy.spatial
+import warnings
 
 from .conversions import spherical_to_cartesian, \
     cartesian_to_spherical, longlat_to_spherical
@@ -130,6 +131,56 @@ class DymaxionProjection(object):
         x_tmpl, y_tmpl = gnomonic_projection(numpy.pi/2, 0)(rlong, rlat)
         transf = self.transformations[face_idx]
         return rotate_translate(**transf)(x_tmpl, y_tmpl)
+
+    def get_poly_intersection(self, polygon, face_idx):
+        """ Get the intersection of a polygon with a given face
+        
+            This carries out the intersection using a stereographic transform
+            to get around issues with wrapping in a spherical geometry
+        
+            Parameters:
+                polygon - a shapely.geometry.Polygon instance
+                face_idx - the face to get the intersection with
+                
+            Returns:
+                intersection - a shapely.geometry.Polygon instance containing
+                    the intersection
+        """
+        # Define transform functions
+        centre = numpy.degrees(cartesian_to_spherical(*self.face_centres[face_idx]))
+        transform = lambda s: shapely.ops.transform(
+            sterographic_projection(centre[0], centre[1], longlat=True), s)
+        itransform = lambda s: shapely.ops.transform(
+            inverse_sterographic_projection(centre[0], centre[1], longlat=True), s)
+
+        # Transform the face and the polygon
+        with warnings.catch_warnings():
+            # Suppress some warnings - we can end up with invalid polygons but
+            # we deal with this ourselves
+            warnings.simplefilter("ignore")
+            face = transform(self.latlong_faces[face_idx])
+            polygon_tr = transform(polygon)
+            if not polygon_tr.is_valid:
+                # We have a self-intersecting polygon so use the
+                # .buffer(0) trick to remove the intersections
+                polygon_tr = polygon_tr.buffer(0)
+
+        # We also need to track the interior of the polygons as the projection
+        # can turn them inside out. Because we're projecting through the centre
+        # of the face we don't need to worry about this happening for it.
+        interior_point = transform(polygon.representative_point())
+
+        # Get intersection
+        if polygon_tr.contains(interior_point):
+            # We're ok - the inside and outside are in the right locations
+            intersect = itransform(face.intersection(polygon_tr))
+        else:
+            # We need to switch from intersection to difference because 
+            # the interior and exterior of our polygon have been switched 
+            # by the projection
+            intersect = itransform(face.difference(polygon_tr))
+        
+        return intersect
 
     def _which_face(self, x, y, z):
         """ Determine which face center is closest to the given point

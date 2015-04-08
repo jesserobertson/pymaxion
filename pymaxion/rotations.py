@@ -84,12 +84,13 @@ def rotate_translate(rotation, translation):
     """ Returns a function to rotate points around the origin
         and them translate them with the given vector
 
-        We use this for transformign the
+        We use this for transforming the faces back to the right 
+        location on the Fuller plane.
     """
     rot = rotation_matrix(numpy.radians([-rotation]))
     def _transform_fn(x, y):
-        return (x*rot[0, 0] + y*rot[0, 1] + translation[0],
-                x*rot[1, 0] + y*rot[1, 1] + translation[1])
+        return (x * rot[0, 0] + y * rot[0, 1] + translation[0],
+                x * rot[1, 0] + y * rot[1, 1] + translation[1])
     return _transform_fn
 
 
