@@ -20,6 +20,12 @@
 			"file_exclude_patterns": []
 		},
 		{
+			"path": "examples",
+			"name": "Examples",
+			"folder_exclude_patterns": ["__pycache__", "*.ipynb*"],
+			"file_exclude_patterns": ["*.o", "ne*", "*.png"]
+		},
+		{
 			"path": "docs",
 			"name": "Documentation",
 			"folder_exclude_patterns": [".git", ".dSYM", ".static", ".templates"],
