@@ -17,7 +17,7 @@
 			"path": "tests",
 			"name": "Tests",
 			"folder_exclude_patterns": ["__pycache__"],
-			"file_exclude_patterns": []
+			"file_exclude_patterns": ["*.png"]
 		},
 		{
 			"path": "examples",

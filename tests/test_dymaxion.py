@@ -2,6 +2,8 @@
 
 import unittest
 import numpy
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import shapely, shapely.ops
 
