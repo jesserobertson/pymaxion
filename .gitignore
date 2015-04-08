@@ -10,3 +10,6 @@ examples/*.ipynb*/*
 build/*
 dist/*
 pymaxion/_version.py
+.eggs
+.coverage
+*.sublime-workspace
