@@ -6,6 +6,7 @@ from pymaxion import DymaxionProjection
 from pymaxion.utilities import *
 from pymaxion.conversions import *
 from pymaxion.operations import * 
+from pymaxion.plotting import *
 
 import numpy
 import matplotlib.pyplot as plt

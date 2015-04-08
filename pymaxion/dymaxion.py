@@ -9,6 +9,8 @@
         Pythonized for use with Shapely objects
 """
 
+from __future__ import division, print_function
+
 import numpy
 import shapely.geometry
 import descartes

@@ -9,6 +9,8 @@
         Pythonized for use with Shapely objects
 """
 
+from __future__ import division, print_function
+
 import numpy
 from numpy import sin, cos, degrees, radians, arcsin, arctan, arctan2, sqrt, pi, \
     vstack, asarray, pi

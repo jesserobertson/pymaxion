@@ -7,8 +7,11 @@
     description: Various functions to perform operations on polygons etc
 """
 
+from __future__ import division, print_function
+
 import numpy
 import shapely.ops, shapely.geometry
+
 
 def median_location(geom):
     """ Return a representative median location for a given geometry
@@ -42,6 +45,7 @@ def median_location(geom):
     else:
         raise ValueError(
             "Don't know what to do with geometry {0}".format(geom))
+
 
 def fix_longitude(geom, max_distance=180):
     """ Rework longitude locations so that polygon is simple

@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+""" file:  rotation.py
+    author: Jess Robertson
+            CSIRO Mineral Resources Flagship
+    date:   Wednesday April 01, 2015
+
+    description: projection functions
+"""
+
+from __future__ import division, print_function
+
 from numpy import sin, cos, sqrt, arctan2, arcsin, degrees, pi
 
 from .conversions import longlat_to_spherical, spherical_to_longlat

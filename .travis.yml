@@ -27,13 +27,11 @@ before_install:
   - conda info -a
 
 install:
-  - conda create -q -n test-pymaxion python=$TRAVIS_PYTHON_VERSION numpy matplotlib shapely coverage coveralls
+  - conda create -q -n test-pymaxion python=$TRAVIS_PYTHON_VERSION --file requirements.txt
   - source activate test-pymaxion
+  - conda install coverage
   - python setup.py update_version install
 
 # Command to run tests
 script:
   - coverage run --source pymaxion run_test.py
-
-after_success:
-  - coveralls

@@ -7,16 +7,17 @@
     description: Run tests
 """
 
+from __future__ import print_function
+
 import sys
 import unittest
 import pymaxion
 import os
 
-from tests.mocks.update import update_mocks
 
 def main():
     # Print version for logging purposes
-    print 'pymaxion version: {0}'.format(pymaxion.__version__)
+    print('pymaxion version: {0}'.format(pymaxion.__version__))
 
     # Glom tests together and run them
     suite = unittest.defaultTestLoader.discover('tests')
