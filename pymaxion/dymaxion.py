@@ -19,7 +19,7 @@ import scipy.spatial
 import warnings
 
 from .conversions import spherical_to_cartesian, \
-    cartesian_to_spherical, longlat_to_spherical
+    cartesian_to_spherical, longlat_to_spherical, spherical_to_longlat
 from .projections import gnomonic_projection, \
     sterographic_projection, inverse_sterographic_projection
 from .rotations import rotation_matrix, rotate_translate
@@ -56,7 +56,7 @@ class DymaxionProjection(object):
     # face
     faces = numpy.array([
         [ 0,  1,  2], [ 0,  2,  3], [ 0,  3,  4], [ 0,  4,  5], [ 0,  1,  5],
-        [ 1,  2,  7], [ 7,  2,  8], [ 8,  2,  3], [ 9,  8,  3], [ 4,  9,  3],
+        [ 1,  2,  7], [ 7,  2,  8], [ 8,  2,  3], [ 9,  3,  8], [ 4,  9,  3],
         [ 4, 10,  9], [ 4,  5, 10], [10,  5,  6], [ 6,  5,  1], [ 7,  6,  1],
         [11,  8,  7], [11,  8,  9], [11, 10,  9], [11, 10,  6], [11,  7,  6]],
         dtype=numpy.int)
@@ -138,6 +138,17 @@ class DymaxionProjection(object):
 
     def get_intersection(self, geom, face_idx):
         """ Get the intersection of a geometry with a given face
+
+            This carries out the intersection using a stereographic transform
+            to get around issues with wrapping in a spherical geometry
+        
+            Parameters:
+                geom - a shapely.geometry.* instance
+                face_idx - the face to get the intersection with
+                
+            Returns:
+                intersection - a shapely.geometry.* instance containing
+                    the intersection
         """
         if geom.type.endswith('Polygon'):
             return self._get_poly_intersection(geom, face_idx)
@@ -148,17 +159,6 @@ class DymaxionProjection(object):
 
     def _get_poly_intersection(self, polygon, face_idx):
         """ Get the intersection of a polygon with a given face
-        
-            This carries out the intersection using a stereographic transform
-            to get around issues with wrapping in a spherical geometry
-        
-            Parameters:
-                polygon - a shapely.geometry.Polygon instance
-                face_idx - the face to get the intersection with
-                
-            Returns:
-                intersection - a shapely.geometry.Polygon instance containing
-                    the intersection
         """
         # Define transform functions
         centre = numpy.degrees(cartesian_to_spherical(*self.face_centres[face_idx]))
@@ -370,7 +370,7 @@ class DymaxionProjection(object):
         # Construct polygons for faces by using geodesic arcs between vertices
         self._latlong_faces = []
         for idx, vidxs in enumerate(self.faces):
-            vertices = [numpy.degrees(cartesian_to_spherical(*v))
+            vertices = [spherical_to_longlat(*cartesian_to_spherical(*v))
                         for v in self.vertices[vidxs]]
             vertex_list = [(vertices[0], vertices[1]),
                            (vertices[1], vertices[2]),

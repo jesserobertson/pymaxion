@@ -59,14 +59,7 @@ def longlat_to_spherical(longitude, latitude):
                  phi = rotation from north pole ~~ 'latitude')
     """
     # Convert longitude and latitude to theta and phi
-    theta = radians(longitude)
-    try:
-        theta[theta < -pi] += 2 * pi
-        theta[theta > pi] -= 2 * pi
-    except TypeError:
-        theta = theta + 2 * pi if theta < -pi else theta
-        theta = theta - 2 * pi if theta > pi else theta
-    return (theta, radians(latitude))
+    return (radians(longitude), radians(latitude))
 
 def spherical_to_longlat(theta, phi):
     """ Convert longitude and latitude into spherical polar
@@ -85,11 +78,4 @@ def spherical_to_longlat(theta, phi):
                  phi = rotation from north pole ~~ 'latitude')
     """
     # Convert longitude and latitude to theta and phi
-    longitude = degrees(theta)
-    try:
-        longitude[longitude < -180] += 360
-        longitude[longitude > 180] -= 360
-    except TypeError:
-        longitude = longitude + 360 if longitude < -180 else longitude
-        longitude = longitude - 360 if longitude > 180 else longitude
-    return (longitude, degrees(phi))
+    return (degrees(theta), degrees(phi))

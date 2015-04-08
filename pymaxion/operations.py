@@ -47,7 +47,7 @@ def median_location(geom):
             "Don't know what to do with geometry {0}".format(geom))
 
 
-def fix_longitude(geom, max_distance=180):
+def fix_longitude(geom, max_distance=180, degrees=True):
     """ Rework longitude locations so that polygon is simple
     
         Parameters:
@@ -62,6 +62,14 @@ def fix_longitude(geom, max_distance=180):
     """
     # Get a representative point
     rlong, rlat = median_location(geom)
+    if rlong > 180 and degrees:
+        rlong -= 360
+    elif rlong < -180 and degrees:
+        rlong += 360
+    elif rlong > numpy.pi and not degrees:
+        rlong -= 2 * numpy.pi
+    elif rlong < -numpy.pi and not degrees:
+        rlong += 2 * numpy.pi
     
     # Function to transform points
     def _transform_fn(x, y):
