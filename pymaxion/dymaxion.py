@@ -127,15 +127,26 @@ class DymaxionProjection(object):
         face_idx = self._which_face(x, y, z)
         x, y, z = numpy.dot(self.face_rotation_matrices[face_idx],
                             numpy.vstack([x, y, z]))
-        rlong, rlat = cartesian_to_spherical(x, y, z)
+        rtheta, rphi = cartesian_to_spherical(x, y, z)
 
         # Project points through gnomonic projection, then rotate back into
         # postition on the Fuller plane
-        x_tmpl, y_tmpl = gnomonic_projection(numpy.pi/2, 0)(rlong, rlat)
-        transf = self.transformations[face_idx]
-        return rotate_translate(**transf)(x_tmpl, y_tmpl)
+        x_tmpl, y_tmpl = gnomonic_projection(numpy.pi/2, 0)(rtheta, rphi)
+        # transf = self.transformations[face_idx]
+        # x, y = rotate_translate(**transf)(x_tmpl, y_tmpl)
+        return x_tmpl, y_tmpl
 
-    def get_poly_intersection(self, polygon, face_idx):
+    def get_intersection(self, geom, face_idx):
+        """ Get the intersection of a geometry with a given face
+        """
+        if geom.type.endswith('Polygon'):
+            return self._get_poly_intersection(geom, face_idx)
+        elif geom.type.endswith('LineString'):
+            return self._get_line_intersection(geom, face_idx)
+        else:
+            raise ValueError("Don't know how to get the intersection of this object.")
+
+    def _get_poly_intersection(self, polygon, face_idx):
         """ Get the intersection of a polygon with a given face
         
             This carries out the intersection using a stereographic transform
@@ -161,7 +172,7 @@ class DymaxionProjection(object):
             # Suppress some warnings - we can end up with invalid polygons but
             # we deal with this ourselves
             warnings.simplefilter("ignore")
-            face = transform(self.latlong_faces[face_idx])
+            face_tr = transform(self.latlong_faces[face_idx])
             polygon_tr = transform(polygon)
             if not polygon_tr.is_valid:
                 # We have a self-intersecting polygon so use the
@@ -176,14 +187,40 @@ class DymaxionProjection(object):
         # Get intersection
         if polygon_tr.contains(interior_point):
             # We're ok - the inside and outside are in the right locations
-            intersect = itransform(face.intersection(polygon_tr))
+            intersect = itransform(face_tr.intersection(polygon_tr))
         else:
             # We need to switch from intersection to difference because 
             # the interior and exterior of our polygon have been switched 
             # by the projection
-            intersect = itransform(face.difference(polygon_tr))
+            intersect = itransform(face_tr.difference(polygon_tr))
         
         return intersect
+
+    def _get_line_intersection(self, linestring, face_idx):
+        """ Get the intersection of a linestring with a given face
+        
+            This carries out the intersection using a stereographic transform
+            to get around issues with wrapping in a spherical geometry
+        
+            Parameters:
+                linestring - a shapely.geometry.LineString instance
+                face_idx - the face to get the intersection with
+                
+            Returns:
+                intersection - a shapely.geometry.Polygon instance containing
+                the intersection
+        """
+        # Define transform functions
+        centre = numpy.degrees(cartesian_to_spherical(*self.face_centres[face_idx]))
+        transform = lambda s: shapely.ops.transform(
+            sterographic_projection(centre[0], centre[1], longlat=True), s)
+        itransform = lambda s: shapely.ops.transform(
+            inverse_sterographic_projection(centre[0], centre[1], longlat=True), s)
+
+        # Transform the face and the polygon
+        face_tr = transform(self.latlong_faces[face_idx])
+        line_tr = transform(linestring)
+        return itransform(face_tr.intersection(line_tr))
 
     def _which_face(self, x, y, z):
         """ Determine which face center is closest to the given point

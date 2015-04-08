@@ -120,7 +120,7 @@ class TestConversions(unittest.TestCase):
                 inverse_sterographic_projection(centre[0], centre[1], longlat=True), s)
 
             # Get intersection of poly with face
-            intersect = proj.get_poly_intersection(shape, face_idx)
+            intersect = proj.get_intersection(shape, face_idx)
             if intersect.is_empty:
                 continue
             else:
