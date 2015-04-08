@@ -18,7 +18,8 @@ import warnings
 
 from .conversions import spherical_to_cartesian, \
     cartesian_to_spherical, longlat_to_spherical
-from .projections import gnomonic_projection
+from .projections import gnomonic_projection, \
+    sterographic_projection, inverse_sterographic_projection
 from .rotations import rotation_matrix, rotate_translate
 from .utilities import geodesic_linspace
 

@@ -12,6 +12,7 @@ import scipy.sparse
 
 from .conversions import longlat_to_spherical
 
+
 def rotation_matrix(angles_list=None, angles_array=None):
     """ Returns a rotation matrix in n dimensions
 
