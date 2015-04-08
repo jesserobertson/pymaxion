@@ -73,9 +73,8 @@ class TestConversions(unittest.TestCase):
 
         land = get_land()
         area_idx = numpy.argsort([l.area for l in land])
-        shapes = shapely.geometry.MultiPolygon([land[int(i)] for i in area_idx[-1:-50:-1]])
 
-        for shape in get_land():
+        for shape in self.shapes:
             if shape.type.startswith('Multi'):
                 for poly in shape:
                     axes.add_patch(descartes.PolygonPatch(
@@ -106,6 +105,8 @@ class TestConversions(unittest.TestCase):
         face_idxs = (0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18)
         problems = (8, 13)
         colorlist = alternate_colors('RdYlBu_r', 19)
+        proj = DymaxionProjection()
+        shape = self.shapes[0]
 
         for face_idx in face_idxs:
             # Define transform functions
@@ -120,7 +121,7 @@ class TestConversions(unittest.TestCase):
             if intersect.is_empty:
                 continue
             else:
-                intersect = pymaxion.operations.fix_longitude(intersect)
+                intersect = fix_longitude(intersect)
 
             # Plot part of poly
             color = colorlist[face_idx]
